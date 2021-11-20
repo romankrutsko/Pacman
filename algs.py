@@ -1,6 +1,10 @@
 import pygame
 from objects import *
 from datetime import datetime
+import sys
+from game import *
+import random
+
 
 def findPathBFS(maze, startx, starty, endx, endy):
     startTime = datetime.now()
@@ -20,7 +24,8 @@ def findPathBFS(maze, startx, starty, endx, endy):
     for i in range(len(maze)):
         visited.append([])
         for j in range(len(maze[i])):
-            if (maze[i][j] != 0):
+            if maze[i][j] != 0:
+                # unvisited dots
                 visited[-1].append(0)
             else:
                 visited[-1].append(True)
@@ -33,27 +38,26 @@ def findPathBFS(maze, startx, starty, endx, endy):
         p = queue[0]
         queue.pop(0)
 
-        if (p[0] == endx and p[1] == endy):
+        if p[0] == endx and p[1] == endy:
             endTime = datetime.now()
             print('BFS work time:', endTime - startTime)
             print('path:', queue)
             return reconstructPath(visited, p[0], p[1])
 
-        # print(maze[p[0]][p[1]])
-
+        # Look at all 4 directions and add them to the queue
         for item in range(4):
             # using the direction array
             a = p[0] + Dir[item][0]
             b = p[1] + Dir[item][1]
 
             # not blocked and valid
-            if (a >= 0 and b >= 0 and a < envhight and b < envwidth and visited[a][b] == 0 and visited[a][b] != True):
+            if a >= 0 and b >= 0 and a < envhight and b < envwidth and visited[a][b] == 0 and visited[a][b] != True:
                 visited[a][b] = weight + 1
                 queue.append((a, b))
                 newCount += 1
 
         oldcount -= 1
-        if (oldcount <= 0):
+        if oldcount <= 0:
             oldcount = newCount
             newCount = 0
             weight += 1
@@ -61,6 +65,7 @@ def findPathBFS(maze, startx, starty, endx, endy):
     return queue
 
 
+# reconstruct path for DFS algorithm
 def reconstructPath(maze, x, y):
     stop = True
     envhight = len(maze)
@@ -106,11 +111,7 @@ def findPathDFS(maze, startx, starty, endx, endy):
     endy = int(endy)
 
     allpath = []
-
     queue = []
-    # queue.append((startx,starty))
-    envhight = len(grid)
-    envwidth = len(grid[0])
 
     visited = []
     for i in range(len(maze)):
@@ -121,6 +122,7 @@ def findPathDFS(maze, startx, starty, endx, endy):
             else:
                 visited[-1].append(1)
 
+    # Recursion func
     go_to(startx, starty, endx, endy, visited, queue, allpath)
     endTime = datetime.now()
     print('DFS work time:', endTime - startTime)
@@ -136,8 +138,8 @@ def go_to(startx, starty, endx, endy, visited, queue, allpath):
         return
     queue.append((startx, starty))
     visited[startx][starty] = 2
+    # if we've found goal point
     if (startx, starty) == (endx, endy):
-        # print("Found!", queue)
         allpath.append(queue.copy())
         queue.pop()
         return
@@ -148,3 +150,121 @@ def go_to(startx, starty, endx, endy, visited, queue, allpath):
         go_to(startx, starty - 1, endx, endy, visited, queue, allpath)  # check left
     queue.pop()
     return
+
+
+class Node:
+    def __init__(self, x, y, bNode=None):
+        self.X = x
+        self.Y = y
+        self.Node = bNode
+
+    def name(self, b):
+        if self.Node != None:
+            b.append(self.Node)
+            print(self.X, " ", self.Y)
+            return self.name(b)
+        else:
+            return b
+
+
+def randomizeWeights(field):
+    newField = []
+    visitedFieldBig = []
+    r = random
+
+    for i in range(len(field) * 2 - 1):
+        row = []
+        clearRow = []
+        for j in range(len(field[0]) * 2 - 1):
+            if (i % 2 == 0) and (j % 2 == 0):
+                row.append(field[int(i / 2)][int(j / 2)])
+                if field[int(i / 2)][int(j / 2)] == 1:
+                    clearRow.append(0)
+                elif field[int(i / 2)][int(j / 2)] == 2:
+                    clearRow.append(0)
+                else:
+                    clearRow.append(1)
+            elif (i % 2 != 0) and (j % 2 != 0):
+                row.append(0)
+                clearRow.append(1)
+            else:
+                row.append(random.randint(4, 9))
+                clearRow.append(0)
+        newField.append(row)
+        visitedFieldBig.append(clearRow)
+
+    return newField, visitedFieldBig
+
+
+def reconstructPathForUCS(node):
+    queue = []
+    while node != None:
+        queue.append((node.X / 2, node.Y / 2))
+        node = node.Node
+    return queue
+
+
+def UCS(maze, startX, startY, endX, endY):
+    startX = int(startX) * 2
+    startY = int(startY) * 2
+    endX = int(endX) * 2
+    endY = int(endY) * 2
+
+    # list of Nodes (with coordinates)
+    nodesList = []
+    # Nodes weights
+    nodesWeightsList = []
+
+    nodesList.append(Node(startX, startY, None))
+    nodesWeightsList.append(0)
+
+    # randomize weights for fields
+    field, visited = randomizeWeights(maze)
+
+    startNode = None
+
+    startTime = datetime.now()
+    while len(nodesList) > 0:
+        minIndex = nodesWeightsList.index(min(nodesWeightsList))
+        node = nodesList[minIndex]
+        weightNode = nodesWeightsList[minIndex]
+        nodesWeightsList[minIndex] = sys.maxsize
+
+        startNode = Node(node.X, node.Y, startNode)
+        visited[node.X][node.Y] = 1
+
+        # if we find endpoint
+        if node.X == endX and node.Y == endY:
+            endTime = datetime.now()
+            print('UCS work time:', endTime - startTime)
+            print('Path:', reconstructPathForUCS(node))
+            return reconstructPathForUCS(node)
+
+        tempArray = []
+        tempWeightIndexesArray = []
+        # check all 4 directions
+        if node.X - 2 >= 0 and visited[node.X - 2][node.Y] != 1:
+            tempArray.append(Node(node.X - 2, node.Y, node))
+            asd = field[node.X - 1][node.Y]
+            tempWeightIndexesArray.append(weightNode + field[node.X - 1][node.Y])
+        if node.Y - 2 >= 0 and visited[node.X][node.Y - 2] != 1:
+            tempArray.append(Node(node.X, node.Y - 2, node))
+            asd = field[node.X][node.Y - 1]
+            tempWeightIndexesArray.append(weightNode + field[node.X][node.Y - 1])
+        if node.X + 2 < len(field) and visited[node.X + 2][node.Y] != 1:
+            tempArray.append(Node(node.X + 2, node.Y, node))
+            asd = field[node.X + 1][node.Y]
+            tempWeightIndexesArray.append(weightNode + field[node.X + 1][node.Y])
+        if node.Y + 2 < len(field[0]) and visited[node.X][node.Y + 2] != 1:
+            tempArray.append(Node(node.X, node.Y + 2, node))
+            asd = field[node.X][node.Y + 1]
+            tempWeightIndexesArray.append(weightNode + field[node.X][node.Y + 1])
+
+        # collect found dots from all directions to lists
+        while len(tempArray) > 0:
+            tempNode = tempArray.pop()
+            nodesList.append(tempNode)
+            nodesWeightsList.append(tempWeightIndexesArray.pop())
+
+
+
