@@ -267,4 +267,112 @@ def UCS(maze, startX, startY, endX, endY):
             nodesWeightsList.append(tempWeightIndexesArray.pop())
 
 
+def heuristic(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+
+def euclidean(a, b):
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+
+def euclideanSquared(a, b):
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+
+def Astar(maze, startX, startY, endX, endY, heuristic):
+    startX = int(startX) * 2
+    startY = int(startY) * 2
+    endX = int(endX) * 2
+    endY = int(endY) * 2
+
+    # list of Nodes (with coordinates)
+    nodesList = []
+    # Nodes weights
+    nodesWeightsList = []
+
+    nodesList.append(Node(startX, startY, None))
+    nodesWeightsList.append(0)
+
+    # randomize weights for fields
+    field, visited = randomizeWeights(maze)
+
+    startTime = datetime.now()
+    startNode = None
+
+    while len(nodesList) > 0:
+        minIndex = nodesWeightsList.index(min(nodesWeightsList))
+        node = nodesList[minIndex]
+        weightNode = nodesWeightsList[minIndex]
+        field[node.X][node.Y] = weightNode
+        nodesWeightsList[minIndex] = sys.maxsize
+
+        startNode = Node(node.X, node.Y, startNode)
+        visited[node.X][node.Y] = 1
+
+        # if we find endpoint
+        if node.X == endX and node.Y == endY:
+            endTime = datetime.now()
+            print('Astar work time:', endTime - startTime)
+
+            queue = reconstructPathForUCS(node)
+            print('Path:', queue)
+            return queue, field
+
+        tempArray = []
+        tempWeightIndexesArray = []
+        if node.X - 2 >= 0 and visited[node.X - 2][node.Y] != 1:
+            tempArray.append(Node(node.X - 2, node.Y, node))
+            asd = field[node.X - 1][node.Y]
+            tempWeightIndexesArray.append(
+                weightNode + field[node.X - 1][node.Y] + heuristic((node.X - 1, node.Y), (endX, endY)))
+        if node.Y - 2 >= 0 and visited[node.X][node.Y - 2] != 1:
+            tempArray.append(Node(node.X, node.Y - 2, node))
+            asd = field[node.X][node.Y - 1]
+            tempWeightIndexesArray.append(
+                weightNode + field[node.X][node.Y - 1] + heuristic((node.X, node.Y - 1), (endX, endY)))
+        if node.X + 2 < len(field) and visited[node.X + 2][node.Y] != 1:
+            tempArray.append(Node(node.X + 2, node.Y, node))
+            asd = field[node.X + 1][node.Y]
+            tempWeightIndexesArray.append(
+                weightNode + field[node.X + 1][node.Y] + heuristic((node.X + 1, node.Y), (endX, endY)))
+        if node.Y + 2 < len(field[0]) and visited[node.X][node.Y + 2] != 1:
+            tempArray.append(Node(node.X, node.Y + 2, node))
+            asd = field[node.X][node.Y + 1]
+            tempWeightIndexesArray.append(
+                weightNode + field[node.X][node.Y + 1] + heuristic((node.X, node.Y + 1), (endX, endY)))
+
+        while len(tempArray) > 0:
+            tempNode = tempArray.pop()
+            nodesList.append(tempNode)
+            nodesWeightsList.append(tempWeightIndexesArray.pop())
+
+    # back to normal array
+    a = []
+    for item in nodesList:
+        hehe = nodesList.pop()
+        a.append((int(hehe[0] / 2), int(hehe[1] / 2)))
+    queue = a
+    print(queue)
+    print(nodesWeightsList)
+    for i in range(len(field) - 1):
+        if i % 2 == 0:
+            print()
+            for j in range(len(field[0]) - 1):
+                if j % 2 == 0:
+                    print(field[i][j], end='')
+
+    for i in range(len(visited)):
+        print(visited[i])
+
+
+def buildPathThrowDots(dots):
+    fullPath = []
+    for item in range(len(dots) - 1):
+        aStarPath, field = Astar(grid, dots[item][0], dots[item][1], dots[item + 1][0], dots[item + 1][1], euclideanSquared)
+        aStarPath.reverse()
+        fullPath.append(aStarPath)
+    path = []
+    for row in fullPath:
+        for item in row:
+            path.append(item)
+    return path
